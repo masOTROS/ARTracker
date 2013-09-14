@@ -1,13 +1,22 @@
-#ifndef _TEST_APP
-#define _TEST_APP
+#pragma once
 
 #include "ofxOpenCv.h"
 #include "ofxARToolkitPlus.h"
+#include "ofxUI.h"
 
 #include "ofMain.h"
 
 // Uncomment this to use a camera instead of a video file
 #define CAMERA_CONNECTED
+
+#define CORNERS 4
+
+typedef struct{
+    int ID;
+    queue<ofPoint> center;
+    queue<ofPoint> corner[CORNERS];
+    queue<float> time;
+}ARMarker;
 
 class ofApp : public ofBaseApp{
 
@@ -23,6 +32,8 @@ class ofApp : public ofBaseApp{
 		void mousePressed(int x, int y, int button);
 		void mouseReleased(int x, int y, int button);
 		void windowResized(int w, int h);
+    
+        void exit();
 	
 		/* Size of the image */
 		int width, height;
@@ -35,9 +46,11 @@ class ofApp : public ofBaseApp{
 		#endif
 
 		/* ARToolKitPlus class */	
-		ofxARToolkitPlus artk;	
-		int threshold;
-	
+		ofxARToolkitPlus artk;
+    
+        /* ARToolKitPlus parameters */
+        bool byn;
+		int bynThreshold;
 		/* OpenCV images */
 		ofxCvColorImage colorImage;
 		ofxCvGrayscaleImage grayImage;
@@ -47,7 +60,12 @@ class ofApp : public ofBaseApp{
 		ofImage displayImage;
 		/* The four corners of the image */
 		vector<ofPoint> displayImageCorners;
+    
+        vector< ARMarker > markers;
+    
+    float lastMarkersCheck;
+    
+        ofxUISuperCanvas *      gui;
+        void guiEvent(ofxUIEventArgs &e);
 	
 };
-
-#endif
