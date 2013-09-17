@@ -12,6 +12,7 @@ bin/*
 *.slo
 *.lo
 *.o
+obj/
 
 # Compiled Dynamic libraries
 *.so
@@ -35,6 +36,8 @@ bin/*
 *.vcxproj
 *.vcxproj.filters
 *.vcxproj.user
+*.sdf
+*.suo
 
 #XCode files
 *.plist

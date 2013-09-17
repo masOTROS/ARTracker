@@ -13,9 +13,13 @@
 
 typedef struct{
     int ID;
-    queue<ofPoint> center;
-    queue<ofPoint> corner[CORNERS];
-    queue<float> time;
+    vector<ofPoint> center;
+    vector<ofPoint> corner[CORNERS];
+    vector<float> time;
+
+	ofPoint lastCenter;
+    ofPoint lastCorner[CORNERS];
+    float lastTime;
 }ARMarker;
 
 class ofApp : public ofBaseApp{
@@ -67,5 +71,11 @@ class ofApp : public ofBaseApp{
     
         ofxUISuperCanvas *      gui;
         void guiEvent(ofxUIEventArgs &e);
-	
+
+		bool record;
+		float recordBegin,recordEnd;
+		float recordBeginTime,recordEndTime;
+		ofFbo recordFbo;
+
+		void save();
 };

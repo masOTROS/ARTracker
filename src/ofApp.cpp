@@ -47,22 +47,45 @@ void ofApp::setup(){
 	bynThreshold = 85;
 	artk.setThreshold(bynThreshold);
 
+	record=false;
+	recordBegin=0.;
+	recordEnd=1.;
+	recordBeginTime=0.;
+	recordEndTime=0.;
+	recordFbo.allocate(width,height);
+	recordFbo.begin();
+	ofClear(0,0);
+	recordFbo.end();
+
     gui = new ofxUISuperCanvas("ARTracker", OFX_UI_FONT_MEDIUM);
     gui->addFPS();
+#ifdef CAMERA_CONNECTED
+    gui->addSpacer();
+    gui->addLabelButton("Camera Settings",false);
+#endif
     gui->addSpacer();
     gui->addTextArea("CONTROL", "Control de parametros de ARTRacker");
     gui->addSpacer();
     gui->addLabelToggle("B&N",&byn);
     gui->addSlider("B&N Threshold", 0, 255, &bynThreshold);
-#ifdef CAMERA_CONNECTED
-    gui->addSpacer();
-    gui->addLabelButton("Camera Settings",false);
-#endif
+	gui->addSpacer();
+    gui->addLabelToggle("Record",&record);
+    gui->addRangeSlider("Record Limits", 0., 1., &recordBegin,&recordEnd);
+	gui->addSpacer();
+    gui->addLabelButton("Save",false);
     gui->autoSizeToFitWidgets();
     ofAddListener(gui->newGUIEvent,this,&ofApp::guiEvent);
     
     if(ofFile::doesFileExist("GUI/guiSettings.xml"))
         gui->loadSettings("GUI/guiSettings.xml");
+
+	record=false;
+	recordBegin=0.;
+	recordEnd=1.;
+	//
+	( (ofxUIRangeSlider *) gui->getWidget("Record Limits") )->setValueLow(0.);
+	( (ofxUIRangeSlider *) gui->getWidget("Record Limits") )->setValueHigh(1.);
+	//
     
     ofEnableAlphaBlending();
     ofSetFrameRate(60);
@@ -104,8 +127,7 @@ void ofApp::update(){
         int numDetected = artk.getNumDetectedMarkers();
         // Draw for each marker discovered
         for(int i=0; i<numDetected; i++) {
-            int artkIndex = i; //artk.getMarkerIndex(i);
-            int artkID = artk.getMarkerID(artkIndex);
+            int artkID = artk.getMarkerID(i);
 
             ARMarker * marker = NULL;
             for(int j=0; j<markers.size(); j++){
@@ -119,19 +141,37 @@ void ofApp::update(){
                 marker = &markers[markers.size()-1];
             }
             marker->ID=artkID;
-            marker->center.push(artk.getDetectedMarkerCenter(artkIndex));
-            marker->time.push(ofGetElapsedTimef());
+			marker->lastTime=ofGetElapsedTimef();
+			marker->lastCenter=artk.getDetectedMarkerCenter(i);
+			vector<ofPoint> corners;
+			artk.getDetectedMarkerOrderedCorners(i,corners);
+			for(int j=0;j<CORNERS;j++){
+				marker->lastCorner[j]=corners[j];
+			}
+			if(record){
+				marker->time.push_back(marker->lastTime);
+				marker->center.push_back(marker->lastCenter);
+				for(int j=0;j<CORNERS;j++){
+					marker->corner[j].push_back(marker->lastCorner[j]);
+				}
+
+				recordFbo.begin();
+				ofSetColor(0,255,0);
+				ofCircle(marker->center.back(),5);
+				recordFbo.end();
+			}
         }
 	}
     
-    if(ofGetElapsedTimef()>(lastMarkersCheck+1.)){
-        for(int i=markers.size()-1; i>=0; i--){
-            if(ofGetElapsedTimef()>(markers[i].time.back()+2.))
-                markers.erase(markers.begin()+i);
-        }
-        lastMarkersCheck=ofGetElapsedTimef();
-    }
-	
+	if(record){
+		if(ofGetElapsedTimef()>(lastMarkersCheck+1.)){
+			for(int i=markers.size()-1; i>=0; i--){
+				if(ofGetElapsedTimef()>(markers[i].lastTime+2.))
+					markers.erase(markers.begin()+i);
+			}
+			lastMarkersCheck=ofGetElapsedTimef();
+		}
+	}
 }
 
 //--------------------------------------------------------------
@@ -142,8 +182,7 @@ void ofApp::draw(){
     if(byn)
         grayThres.draw(0, 0);
     else
-        grayImage.draw(0, 0);
-	ofSetHexColor(0x666666);	
+        colorImage.draw(0, 0);	
 	ofDrawBitmapString(ofToString(artk.getNumDetectedMarkers()) + " marker(s) found", 10, 20);
 
 	// ARTK draw
@@ -187,11 +226,9 @@ void ofApp::draw(){
 	int numDetected = artk.getNumDetectedMarkers();
 	// Draw for each marker discovered
 	for(int i=0; i<numDetected; i++) {
-		
 		// Set the matrix to the perspective of this marker
 		// The origin is in the middle of the marker	
 		artk.applyModelMatrix(i);		
-		
 		// Draw a line from the center out
 		ofNoFill();
 		ofSetLineWidth(5);
@@ -200,7 +237,6 @@ void ofApp::draw(){
 //		glVertex3f(0, 0, 0); 
 //		glVertex3f(0, 0, 50);
 //		glEnd();
-		
 		// Draw a stack of rectangles by offseting on the z axis
 		ofNoFill();
 		ofEnableSmoothing();
@@ -213,11 +249,20 @@ void ofApp::draw(){
     ofPopMatrix();
     ofPopView();
     ofPopStyle();
-    
-    ofFill();
-    ofSetColor(0,255,255);
+
+	ofSetColor(255,255);
+	recordFbo.draw(0,0);
+
+	ofFill();
+	ofSetColor(0,125,125);
     for(int i=0;i<markers.size();i++){
-        ofCircle(markers[i].center.back(),50);
+		for(int j=0;j<CORNERS;j++){
+			ofCircle(markers[i].lastCorner[j],15);
+		}
+    }
+	ofSetColor(0,255,255);
+    for(int i=0;i<markers.size();i++){
+        ofDrawBitmapString(ofToString(markers[i].ID),markers[i].lastCenter);
     }
 }
 
@@ -227,14 +272,103 @@ void ofApp::guiEvent(ofxUIEventArgs &e){
     if(widget->getName()=="B&N Threshold"){
         artk.setThreshold(bynThreshold);
     }
+	else if(widget->getName()=="Record"){
+		if(record){
+			for(int i=0;i<markers.size();i++){
+				markers[i].center.clear();
+				for(int j=0;j<CORNERS;j++){
+					markers[i].corner[j].clear();
+				}
+				markers[i].time.clear();
+			}
+			recordBegin=0.;
+			recordEnd=1.;
+			//
+			( (ofxUIRangeSlider *) gui->getWidget("Record Limits") )->setValueLow(0.);
+			( (ofxUIRangeSlider *) gui->getWidget("Record Limits") )->setValueHigh(1.);
+			//
+			recordBeginTime=ofGetElapsedTimef();
+			recordEndTime=ofGetElapsedTimef();
+			recordFbo.begin();
+			ofClear(0,0);
+			recordFbo.end();
+		}
+		else{
+			recordEndTime=ofGetElapsedTimef();
+		}
+    }
+	else if(widget->getName()=="Record Limits"){
+        if(record){
+			recordBegin=0.;
+			recordEnd=1.;
+		}
+		else{
+			float timeBegin=recordBeginTime+recordBegin*(recordEndTime-recordBeginTime);
+			float timeEnd=recordBeginTime+recordEnd*(recordEndTime-recordBeginTime);
+			recordFbo.begin();
+			ofClear(0,0);
+			for(int i=0;i<markers.size();i++){
+				for(int j=0;j<markers[i].time.size();j++){
+					if(markers[i].time[j]>timeBegin && markers[i].time[j]<timeEnd)
+						ofSetColor(0,255,0);
+					else
+						ofSetColor(255,0,0);
+					ofCircle(markers[i].center[j],5);
+				}
+			}
+			recordFbo.end();
+		}
+    }
+	else if(widget->getName()=="Save"){
+		if(record){
+			recordEndTime=ofGetElapsedTimef();
+			record=false;
+		}
+		ofxUILabelButton * lb = (ofxUILabelButton *)widget;
+        if(!lb->getValue()){
+            save();
+        }
+    }
 #ifdef CAMERA_CONNECTED
-    else if(widget->getName()=="Camera Settings"){
+    if(widget->getName()=="Camera Settings"){
         ofxUILabelButton * lb = (ofxUILabelButton *)widget;
         if(lb->getValue()){
             vidGrabber.videoSettings();
         }
     }
 #endif
+}
+
+//--------------------------------------------------------------
+void ofApp::save(){
+	if(markers.size()){
+		ofFileDialogResult saveFileResult = ofSystemSaveDialog(ofGetTimestampString() + ".csv", "Save your file");
+		if (saveFileResult.bSuccess){
+			float timeBegin=recordBeginTime+recordBegin*(recordEndTime-recordBeginTime);
+			float timeEnd=recordBeginTime+recordEnd*(recordEndTime-recordBeginTime);
+			for(int i=0;i<markers.size();i++){
+				ofBuffer buffer;
+				for(int j=0;j<markers[i].time.size();j++){
+					if(markers[i].time[j]>timeBegin && markers[i].time[j]<timeEnd){
+						buffer.append(ofToString(markers[i].time[j]-timeBegin));
+						buffer.append(",");
+						buffer.append(ofToString(markers[i].center[j]));
+						for(int k=0;k<CORNERS;k++){
+							buffer.append(",");
+							buffer.append(ofToString((markers[i].corner[k])[j]));
+						}
+						buffer.append("\n");
+					}
+				}
+				//ofBufferToFile(ofToString(markers[i].ID)+"_"+saveFileResult.filePath,buffer);
+				ofBufferToFile(saveFileResult.filePath,buffer);
+				ofLogNotice()<<"Data saved to: "<<saveFileResult.filePath;
+			}
+		}
+	}
+	else{
+		ofLogNotice()<<"No marker data available to save.";
+	}
 }
 
 //--------------------------------------------------------------
