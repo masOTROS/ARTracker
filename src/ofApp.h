@@ -6,6 +6,9 @@
 
 #include "ofMain.h"
 
+#define WIDTH 640
+#define HEIGHT 480
+
 // Uncomment this to use a camera instead of a video file
 #define CAMERA_CONNECTED
 
@@ -61,21 +64,33 @@ class ofApp : public ofBaseApp{
 		ofxCvGrayscaleImage	grayThres;
 	
 		/* Image to distort on to the marker */
-		ofImage displayImage;
+		//ofImage displayImage;
 		/* The four corners of the image */
 		vector<ofPoint> displayImageCorners;
     
         vector< ARMarker > markers;
     
-    float lastMarkersCheck;
-    
-        ofxUISuperCanvas *      gui;
-        void guiEvent(ofxUIEventArgs &e);
+		ofxUISuperCanvas *      controlGUI;
+		void controlGUIEvent(ofxUIEventArgs &e);
+
+        ofxUISuperCanvas *      recordGUI;
+        void recordGUIEvent(ofxUIEventArgs &e);
 
 		bool record;
 		float recordBegin,recordEnd;
-		float recordBeginTime,recordEndTime;
+		float saveBegin,saveEnd;
 		ofFbo recordFbo;
+		float recordTimeLabel;
 
 		void save();
+		string saveFile;
+		int saveAlpha;
+
+		bool grid;
+		ofFbo gridFbo;
+		bool gridOpen;
+		int gridCornerGrabbed;
+		ofPoint gridCorners[CORNERS];
+		int gridRows,gridCols;
+		void drawGrid();
 };

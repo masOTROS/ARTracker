@@ -2,8 +2,8 @@
     <Kind>42</Kind>
     <Name>OFX_UI_WIDGET_CANVAS</Name>
     <IsMinified>0</IsMinified>
-    <XPosition>417.000000000</XPosition>
-    <YPosition>5.000000000</YPosition>
+    <XPosition>426.000000000</XPosition>
+    <YPosition>0.000000000</YPosition>
 </Canvas>
 <Widget>
     <Kind>17</Kind>
@@ -13,16 +13,30 @@
 <Widget>
     <Kind>4</Kind>
     <Name>B&amp;N Threshold</Name>
-    <Value>208.000000000</Value>
+    <Value>50.000000000</Value>
+</Widget>
+<Widget>
+    <Kind>17</Kind>
+    <Name>Grid</Name>
+    <Value>1</Value>
+</Widget>
+<Widget>
+    <Kind>17</Kind>
+    <Name>Grid Corners</Name>
+    <Value>0</Value>
+</Widget>
+<Widget>
+    <Kind>4</Kind>
+    <Name>Grid Rows</Name>
+    <Value>15.000000000</Value>
+</Widget>
+<Widget>
+    <Kind>4</Kind>
+    <Name>Grid Columns</Name>
+    <Value>15.000000000</Value>
 </Widget>
 <Widget>
     <Kind>17</Kind>
     <Name>Record</Name>
     <Value>0</Value>
-</Widget>
-<Widget>
-    <Kind>6</Kind>
-    <Name>Record Limits</Name>
-    <HighValue>1.000000000</HighValue>
-    <LowValue>0.000000000</LowValue>
 </Widget>

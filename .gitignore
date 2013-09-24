@@ -38,6 +38,7 @@ obj/
 *.vcxproj.user
 *.sdf
 *.suo
+*.opensdf
 
 #XCode files
 *.plist
